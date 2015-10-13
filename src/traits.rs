@@ -70,9 +70,14 @@ mod tests {
             Ok(())
         }
 
-        fn run(mut self, _signals: Receiver<Signal>) -> Result<(), TestError> {
+        fn run(mut self, signals: Receiver<Signal>) -> Result<(), TestError> {
             self.data += 73;
-            Ok(())
+            let sig = signals.recv().unwrap();
+            if sig == Signal::INT {
+                Ok(())
+            } else {
+                Err(TestError)
+            }
         }
     }
 
@@ -122,7 +127,7 @@ mod tests {
 
         fn wait(&self) -> Result<(), Self::Error> {
             match self.runner.recv() {
-                Ok(_) => Ok(()),
+                Ok(b) => if b { Ok(()) } else { Err(TestError) },
                 Err(_) => Err(TestError),
             }
         }
@@ -137,10 +142,16 @@ mod tests {
         let runner = Test { data: 0 };
         let thread = TestThread::new(runner);
         assert!(thread.ready().is_ok());
+        thread.signal(Signal::INT);
         assert!(thread.wait().is_ok());
     }
 
     #[test]
     fn test_signal() {
+        let runner = Test { data: 0 };
+        let thread = TestThread::new(runner);
+        assert!(thread.ready().is_ok());
+        thread.signal(Signal::HUP);
+        assert!(thread.wait().is_err());
     }
 }
