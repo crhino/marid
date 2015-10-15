@@ -18,18 +18,18 @@ pub trait Runner {
     fn setup(&mut self) -> Result<(), Self::Error>;
 }
 
-/// A Thread represents are running unit of work. It can be signaled and waited on.
-pub trait Thread {
-    /// Error type for the Thread.
+/// A Process represents are running unit of work. It can be signaled and waited on.
+pub trait Process {
+    /// Error type for the Process.
     type Error;
 
-    /// This function will block until the running Thread has finished its setup and
+    /// This function will block until the running Process has finished its setup and
     /// is ready to run.
     fn ready(&self) -> Result<(), Self::Error>;
-    /// This function will wait until the Thread has exited, returning a success or
+    /// This function will wait until the Process has exited, returning a success or
     /// failure.
     fn wait(&self) -> Result<(), Self::Error>;
-    /// This function will signal the running Thread with the specified signal.
+    /// This function will signal the running Process with the specified signal.
     ///
     /// This is a non-blocking function.
     fn signal(&self, signal: Signal);
@@ -42,7 +42,7 @@ mod tests {
     use chan;
     use std::error::Error;
     use std::fmt;
-    use {Signal, Thread, Runner, Receiver, Sender};
+    use {Signal, Process, Runner, Receiver, Sender};
 
     struct Test {
         data: usize,
@@ -81,13 +81,13 @@ mod tests {
         }
     }
 
-    struct TestThread {
+    struct TestProcess {
         runner: mpsc::Receiver<bool>,
         signals: Sender<Signal>,
     }
 
-    impl TestThread {
-        fn new(runner: Test) -> TestThread {
+    impl TestProcess {
+        fn new(runner: Test) -> TestProcess {
             let (sn, rc) = mpsc::channel();
             let (send_runner, recv_runner) = mpsc::channel::<Test>();
             // Marid sender/receiver
@@ -107,14 +107,14 @@ mod tests {
 
             send_runner.send(runner).unwrap();
 
-            TestThread{
+            TestProcess{
                 runner: rc,
                 signals: signals,
             }
         }
     }
 
-    impl Thread for TestThread {
+    impl Process for TestProcess {
         type Error = TestError;
 
         fn ready(&self) -> Result<(), Self::Error> {
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_runner_and_thread() {
         let runner = Test { data: 0 };
-        let thread = TestThread::new(runner);
+        let thread = TestProcess::new(runner);
         assert!(thread.ready().is_ok());
         thread.signal(Signal::INT);
         assert!(thread.wait().is_ok());
@@ -149,7 +149,7 @@ mod tests {
     #[test]
     fn test_signal() {
         let runner = Test { data: 0 };
-        let thread = TestThread::new(runner);
+        let thread = TestProcess::new(runner);
         assert!(thread.ready().is_ok());
         thread.signal(Signal::HUP);
         assert!(thread.wait().is_err());
