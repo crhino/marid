@@ -14,7 +14,7 @@ pub trait Runner {
     /// The setup function is called when a user wants to get ready to work.
     ///
     /// This function should only complete once the type is ready to be run,
-    /// and must complete in finite period of time.
+    /// and must complete in a finite period of time.
     fn setup(&mut self) -> Result<(), Self::Error>;
 }
 
@@ -37,109 +37,12 @@ pub trait Process {
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
-    use std::sync::mpsc;
-    use chan;
-    use std::error::Error;
-    use std::fmt;
-    use {Signal, Process, Runner, Receiver, Sender};
-
-    struct Test {
-        data: usize,
-    }
-
-    #[derive(Debug, Eq, PartialEq, Clone)]
-    struct TestError;
-
-    impl fmt::Display for TestError {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(fmt, "a testing error")
-        }
-    }
-    impl Error for TestError {
-        fn description(&self) -> &str {
-            "a testing error"
-        }
-    }
-
-    impl Runner for Test {
-        type Error = TestError;
-
-        fn setup(&mut self) -> Result<(), TestError> {
-            self.data = 27;
-            Ok(())
-        }
-
-        fn run(mut self, signals: Receiver<Signal>) -> Result<(), TestError> {
-            self.data += 73;
-            let sig = signals.recv().unwrap();
-            if sig == Signal::INT {
-                Ok(())
-            } else {
-                Err(TestError)
-            }
-        }
-    }
-
-    struct TestProcess {
-        runner: mpsc::Receiver<bool>,
-        signals: Sender<Signal>,
-    }
-
-    impl TestProcess {
-        fn new(runner: Test) -> TestProcess {
-            let (sn, rc) = mpsc::channel();
-            let (send_runner, recv_runner) = mpsc::channel::<Test>();
-            // Marid sender/receiver
-            let (signals, sig_recv) = chan::async();
-            thread::spawn(move || {
-                let mut runner = recv_runner.recv().unwrap();
-                match runner.setup() {
-                    Ok(_) => sn.send(true),
-                    Err(_) => sn.send(false),
-                }.unwrap();
-
-                match runner.run(sig_recv) {
-                    Ok(_) => sn.send(true),
-                    Err(_) => sn.send(false),
-                }.unwrap();
-            });
-
-            send_runner.send(runner).unwrap();
-
-            TestProcess{
-                runner: rc,
-                signals: signals,
-            }
-        }
-    }
-
-    impl Process for TestProcess {
-        type Error = TestError;
-
-        fn ready(&self) -> Result<(), Self::Error> {
-            if self.runner.recv().unwrap() {
-                Ok(())
-            } else {
-                Err(TestError)
-            }
-        }
-
-        fn wait(&self) -> Result<(), Self::Error> {
-            match self.runner.recv() {
-                Ok(b) => if b { Ok(()) } else { Err(TestError) },
-                Err(_) => Err(TestError),
-            }
-        }
-
-        fn signal(&self, signal: Signal) {
-            self.signals.send(signal);
-        }
-    }
+    use {Signal, Process};
+    use test_helpers::{TestProcess, TestRunner};
 
     #[test]
     fn test_runner_and_thread() {
-        let runner = Test { data: 0 };
+        let runner = TestRunner::new(0);
         let thread = TestProcess::new(runner);
         assert!(thread.ready().is_ok());
         thread.signal(Signal::INT);
@@ -148,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_signal() {
-        let runner = Test { data: 0 };
+        let runner = TestRunner::new(0);
         let thread = TestProcess::new(runner);
         assert!(thread.ready().is_ok());
         thread.signal(Signal::HUP);

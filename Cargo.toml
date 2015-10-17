@@ -11,5 +11,6 @@ license = "BSD-3-Clause"
 keywords = ["concurrency"]
 
 [dependencies]
-chan-signal = "*"
-chan = "*"
+chan-signal = ">=0.1.4"
+chan = ">=0.1.14"
+ferrous_threads = ">=0.1.1"
