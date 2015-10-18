@@ -6,7 +6,7 @@ pub use chan::{Sender, Receiver};
 /// defined shutdown Signal, the Runner must exit in a finite period of time.
 pub trait Runner {
     /// Error type for the Runner.
-    type Error;
+    type Error: Send;
 
     /// The run function is called when a user wants to perform work.
     fn run(self, signals: Receiver<Signal>) -> Result<(), Self::Error>;
@@ -39,22 +39,31 @@ pub trait Process {
 mod tests {
     use {Signal, Process};
     use test_helpers::{TestProcess, TestRunner};
+    use chan;
 
     #[test]
     fn test_runner_and_thread() {
-        let runner = TestRunner::new(0);
+        let (sn, rc) = chan::sync(1);
+        let runner = TestRunner::new(0, sn);
+
         let thread = TestProcess::new(runner);
         assert!(thread.ready().is_ok());
         thread.signal(Signal::INT);
         assert!(thread.wait().is_ok());
+
+        assert!(rc.recv().unwrap());
     }
 
     #[test]
     fn test_signal() {
-        let runner = TestRunner::new(0);
+        let (sn, rc) = chan::sync(1);
+        let runner = TestRunner::new(0, sn);
+
         let thread = TestProcess::new(runner);
         assert!(thread.ready().is_ok());
         thread.signal(Signal::HUP);
         assert!(thread.wait().is_err());
+
+        assert!(!rc.recv().unwrap());
     }
 }

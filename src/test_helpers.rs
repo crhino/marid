@@ -7,6 +7,7 @@ use {Signal, Process, Runner, Receiver, Sender};
 
 pub struct TestRunner {
     data: usize,
+    sender: Sender<bool>
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -24,8 +25,11 @@ impl Error for TestError {
 }
 
 impl TestRunner {
-    pub fn new(data: usize) -> TestRunner {
-        TestRunner { data: data }
+    pub fn new(data: usize, sender: Sender<bool>) -> TestRunner {
+        TestRunner {
+            data: data,
+            sender: sender,
+        }
     }
 }
 
@@ -39,10 +43,13 @@ impl Runner for TestRunner {
 
     fn run(mut self, signals: Receiver<Signal>) -> Result<(), TestError> {
         self.data += 73;
-        let sig = signals.recv().unwrap();
+        assert_eq!(self.data, 100);
+        let sig = signals.recv().expect("Could not recv signal");
         if sig == Signal::INT {
+            self.sender.send(true);
             Ok(())
         } else {
+            self.sender.send(false);
             Err(TestError)
         }
     }
