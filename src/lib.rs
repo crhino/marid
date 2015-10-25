@@ -16,7 +16,8 @@ mod composer;
 pub use composer::Composer;
 
 mod process;
-use process::{ProcessError, MaridProcess};
+use process::{MaridProcess};
+pub use process::{ProcessError};
 
 /// This function will start the specified runner as well as listen on the specified
 /// signals.

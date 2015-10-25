@@ -14,9 +14,16 @@ enum ProcState {
 
 
 #[derive(Debug, Eq, PartialEq, Clone)]
+/// Error type for a running Process.
 pub enum ProcessError<E> {
+    /// The associated runner returned an error which can be found as the enclosed argument.
     RunnerError(E),
+    /// The associated result has already been received by a caller.
+    ///
+    /// This occurs when calling wait or ready more than once.
     ResultAlreadyGiven,
+    /// The process was not able to recieve a result from the runner. Something has gone wrong
+    /// on the runner's thread.
     CouldNotRecvResult,
 }
 
