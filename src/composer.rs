@@ -4,6 +4,9 @@ use chan;
 use std::thread;
 use std::sync::{Arc, Mutex};
 
+/// The Composer will start each runner inside of its own thread when the run() function
+/// is called. The current behavior is an ordered setup/run, but in the future a parallel
+/// startup mode will be offered.
 pub struct Composer<R: Runner> {
     runners: Vec<R>,
     state: State,
@@ -16,6 +19,7 @@ enum State {
 }
 
 impl<R: Runner> Composer<R> {
+    /// Creates a new Composer.
     pub fn new(runners: Vec<R>) -> Composer<R> {
         Composer{
             runners: runners,

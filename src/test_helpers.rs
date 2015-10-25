@@ -1,3 +1,8 @@
+//! A testing module for Runner/Process traits.
+//!
+//! When implementing different pieces of this crate, it was expedient
+//! to have some testing structs in place. This might also be useful for
+//! other developers who would want to ensure proper functionality.
 use std::thread;
 use std::sync::mpsc;
 use chan;
@@ -5,6 +10,7 @@ use std::error::Error;
 use std::fmt;
 use {Signal, Process, Runner, Receiver, Sender};
 
+/// A test struct that implements the Runner trait.
 pub struct TestRunner {
     data: usize,
     sender: Sender<bool>
@@ -25,6 +31,7 @@ impl Error for TestError {
 }
 
 impl TestRunner {
+    /// Create a new TestRunner.
     pub fn new(data: usize, sender: Sender<bool>) -> TestRunner {
         TestRunner {
             data: data,
@@ -55,12 +62,14 @@ impl Runner for TestRunner {
     }
 }
 
+/// A test struct that implements the Process trait.
 pub struct TestProcess {
     runner: mpsc::Receiver<bool>,
     signals: Sender<Signal>,
 }
 
 impl TestProcess {
+    /// Create a new TestProcess.
     pub fn new(runner: TestRunner) -> TestProcess {
         let (sn, rc) = mpsc::channel();
         let (send_runner, recv_runner) = mpsc::channel::<TestRunner>();
