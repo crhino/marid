@@ -1,21 +1,19 @@
 pub use chan_signal::Signal;
 pub use chan::{Sender, Receiver};
+use {MaridError};
 
 /// A type implementing the Runner trait has the job of performing some arbitrary
 /// work while waiting for a signal indication shutdown. Upon receiving that
 /// defined shutdown Signal, the Runner must exit in a finite period of time.
 pub trait Runner {
-    /// Error type for the Runner.
-    type Error: Send;
-
     /// The run function is called when a user wants to perform work.
-    fn run(self, signals: Receiver<Signal>) -> Result<(), Self::Error>;
+    fn run(self: Box<Self>, signals: Receiver<Signal>) -> Result<(), MaridError>;
 
     /// The setup function is called when a user wants to get ready to work.
     ///
     /// This function should only complete once the type is ready to be run,
     /// and must complete in a finite period of time.
-    fn setup(&mut self) -> Result<(), Self::Error>;
+    fn setup(&mut self) -> Result<(), MaridError>;
 }
 
 /// A Process represents are running unit of work. It can be signaled and waited on.

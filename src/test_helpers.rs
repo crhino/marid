@@ -8,7 +8,7 @@ use std::sync::mpsc;
 use chan;
 use std::error::Error;
 use std::fmt;
-use {Signal, Process, Runner, Receiver, Sender};
+use {MaridError, Signal, Process, Runner, Receiver, Sender};
 
 /// A test struct that implements the Runner trait.
 pub struct TestRunner {
@@ -41,14 +41,12 @@ impl TestRunner {
 }
 
 impl Runner for TestRunner {
-    type Error = TestError;
-
-    fn setup(&mut self) -> Result<(), TestError> {
+    fn setup(&mut self) -> Result<(), MaridError> {
         self.data = 27;
         Ok(())
     }
 
-    fn run(mut self, signals: Receiver<Signal>) -> Result<(), TestError> {
+    fn run(mut self: Box<Self>, signals: Receiver<Signal>) -> Result<(), MaridError> {
         self.data += 73;
         assert_eq!(self.data, 100);
         let sig = signals.recv().expect("Could not recv signal");
@@ -57,7 +55,7 @@ impl Runner for TestRunner {
             Ok(())
         } else {
             self.sender.send(false);
-            Err(TestError)
+            Err(Box::new(TestError))
         }
     }
 }
@@ -76,7 +74,7 @@ impl TestProcess {
         // Marid sender/receiver
         let (signals, sig_recv) = chan::async();
         thread::spawn(move || {
-            let mut runner = recv_runner.recv().unwrap();
+            let mut runner = Box::new(recv_runner.recv().unwrap());
             match runner.setup() {
                 Ok(_) => sn.send(true),
                 Err(_) => sn.send(false),

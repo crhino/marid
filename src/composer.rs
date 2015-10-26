@@ -1,5 +1,6 @@
 use crossbeam;
 use traits::{Runner, Signal, Receiver, Sender};
+use {MaridError};
 use chan;
 use std::thread;
 use std::sync::{Arc, Mutex};
@@ -7,10 +8,9 @@ use std::sync::{Arc, Mutex};
 /// The Composer will start each runner inside of its own thread when the run() function
 /// is called. The current behavior is an ordered setup/run, but in the future a parallel
 /// startup mode will be offered.
-pub struct Composer<R: Runner> {
+pub struct Composer<R> {
     runners: Vec<R>,
     state: State,
-    error: Arc<Mutex<Option<R::Error>>>,
 }
 
 enum State {
@@ -18,25 +18,16 @@ enum State {
     SetupDone,
 }
 
-impl<R: Runner> Composer<R> {
+impl<R> Composer<R> {
     /// Creates a new Composer.
     pub fn new(runners: Vec<R>) -> Composer<R> {
         Composer{
             runners: runners,
             state: State::Init,
-            error: Arc::new(Mutex::new(None)),
         }
     }
-}
 
-impl<R: Runner + Send> Runner for Composer<R> {
-    type Error = R::Error;
-    fn run(mut self, signals: Receiver<Signal>) -> Result<(), Self::Error> {
-        match self.state {
-            State::Init => try!(self.setup()),
-            _ => {},
-        }
-
+    fn take_runners_and_setup_signal_chan(self) -> (Vec<(R, Receiver<Signal>)>, Vec<Sender<Signal>>) {
         let mut runners_vec = vec!();
         let mut sender_vec = vec!();
         for r in self.runners.into_iter() {
@@ -44,18 +35,31 @@ impl<R: Runner + Send> Runner for Composer<R> {
             runners_vec.push((r, rc));
             sender_vec.push(sn);
         }
+        (runners_vec, sender_vec)
+    }
+}
 
+impl Runner for Composer<Box<Runner + Send>> {
+    fn run(mut self: Box<Self>, signals: Receiver<Signal>) -> Result<(), MaridError> {
+        match self.state {
+            State::Init => try!(self.setup()),
+            _ => {},
+        }
+
+        let (runners_vec, sender_vec) = self.take_runners_and_setup_signal_chan();
         let (stop_sn, stop_rc) = chan::sync(0);
         let signaling = signaling_thread(signals, sender_vec, stop_rc);
-        let error = self.error.clone();
+        let error = Arc::new(Mutex::new(None));
+        let error_clone = error.clone();
 
         crossbeam::scope(|scope| {
             for (r, rc) in runners_vec.into_iter() {
-                scope.spawn(|| {
+                let err = error_clone.clone();
+                scope.spawn(move || {
                     match r.run(rc) {
                         Ok(()) => {},
                         Err(e) => {
-                            let mut guard = error.lock().unwrap();
+                            let mut guard = err.lock().unwrap();
                             *guard = Some(e);
                         },
                     }
@@ -65,19 +69,23 @@ impl<R: Runner + Send> Runner for Composer<R> {
 
         stop_sn.send(true);
         signaling.join().unwrap();
-        match self.error.lock().unwrap().take() {
-            Some(e) => Err(e),
-            None => Ok(()),
-        }
+        take_error(error)
     }
 
-    fn setup(&mut self) -> Result<(), Self::Error> {
+    fn setup(&mut self) -> Result<(), MaridError> {
         for r in self.runners.iter_mut() {
             try!(r.setup());
         }
         self.state = State::SetupDone;
         Ok(())
     }
+}
+
+fn take_error(err: Arc<Mutex<Option<MaridError>>>) -> Result<(), MaridError> {
+        match err.lock().unwrap().take() {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
 }
 
 fn signaling_thread(signals: Receiver<Signal>,
@@ -115,12 +123,12 @@ mod tests {
     fn test_composer_runner() {
         let (sn, rc) = chan::sync(2);
 
-        let runner1 = TestRunner::new(1, sn.clone());
-        let runner2 = TestRunner::new(2, sn);
+        let runner1 = Box::new(TestRunner::new(1, sn.clone())) as Box<Runner + Send>;
+        let runner2 = Box::new(TestRunner::new(2, sn)) as Box<Runner + Send>;
 
         let (sig_send, signals) = chan::async();
 
-        let mut composer = Composer::new(vec!(runner1, runner2));
+        let mut composer = Box::new(Composer::new(vec!(runner1, runner2)));
         let res = composer.setup();
         assert!(res.is_ok());
 
@@ -139,12 +147,12 @@ mod tests {
     fn test_composer_error() {
         let (sn, rc) = chan::sync(2);
 
-        let runner1 = TestRunner::new(1, sn.clone());
-        let runner2 = TestRunner::new(2, sn);
+        let runner1 = Box::new(TestRunner::new(1, sn.clone())) as Box<Runner + Send>;
+        let runner2 = Box::new(TestRunner::new(2, sn)) as Box<Runner + Send>;
 
         let (sig_send, signals) = chan::async();
 
-        let mut composer = Composer::new(vec!(runner1, runner2));
+        let mut composer = Box::new(Composer::new(vec!(runner1, runner2)));
         let res = composer.setup();
         assert!(res.is_ok());
 
@@ -163,12 +171,12 @@ mod tests {
     fn test_composer_run_no_setup() {
         let (sn, rc) = chan::sync(2);
 
-        let runner1 = TestRunner::new(1, sn.clone());
-        let runner2 = TestRunner::new(2, sn);
+        let runner1 = Box::new(TestRunner::new(1, sn.clone())) as Box<Runner + Send>;
+        let runner2 = Box::new(TestRunner::new(2, sn)) as Box<Runner + Send>;
 
         let (sig_send, signals) = chan::async();
 
-        let composer = Composer::new(vec!(runner1, runner2));
+        let composer = Box::new(Composer::new(vec!(runner1, runner2)));
         thread::spawn(move || {
             sig_send.send(Signal::INT);
         });

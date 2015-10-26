@@ -4,6 +4,7 @@ use std::error::Error;
 use std::sync::mpsc;
 use std::cell::Cell;
 use traits::{Runner, Process, Sender, Receiver, Signal};
+use {MaridError};
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum ProcState {
@@ -65,9 +66,9 @@ impl<E: Error> From<E> for ProcessError<E> {
     }
 }
 
-pub struct MaridProcess<R: Runner> {
-    setup_chan: mpsc::Receiver<Result<(), ProcessError<R::Error>>>,
-    run_chan: mpsc::Receiver<Result<(), ProcessError<R::Error>>>,
+pub struct MaridProcess {
+    setup_chan: mpsc::Receiver<Result<(), ProcessError<MaridError>>>,
+    run_chan: mpsc::Receiver<Result<(), ProcessError<MaridError>>>,
 
     signaler: Sender<Signal>,
     runner: Option<thread::JoinHandle<()>>,
@@ -75,12 +76,12 @@ pub struct MaridProcess<R: Runner> {
 }
 
 // Be aware, ready/wait
-impl<R: Runner + Send + 'static> MaridProcess<R> {
-    pub fn new(runner: R, signaler: Sender<Signal>, recv: Receiver<Signal>) -> MaridProcess<R> {
+impl MaridProcess {
+    pub fn new(runner: Box<Runner + Send>, signaler: Sender<Signal>, recv: Receiver<Signal>) -> MaridProcess {
         let (setup_sn, setup_rc) = mpsc::channel();
         let (run_sn, run_rc) = mpsc::channel();
 
-        let handle = spawn_run_thread(runner, recv, setup_sn, run_sn);
+        let handle = MaridProcess::spawn_run_thread(runner, recv, setup_sn, run_sn);
 
         MaridProcess {
             setup_chan: setup_rc,
@@ -91,27 +92,28 @@ impl<R: Runner + Send + 'static> MaridProcess<R> {
             state: Cell::new(ProcState::Init),
         }
     }
+
+    fn spawn_run_thread(mut runner: Box<Runner + Send>,
+                           recv: Receiver<Signal>,
+                           setup: mpsc::Sender<Result<(), ProcessError<MaridError>>>,
+                           run: mpsc::Sender<Result<(), ProcessError<MaridError>>>)
+        -> thread::JoinHandle<()> {
+        thread::spawn(move || {
+            let res = runner.setup().map_err(ProcessError::RunnerError);
+            let is_err = res.is_err();
+            setup.send(res).expect("Could not send setup result");
+
+            if !is_err {
+                let err = runner.run(recv).map_err(ProcessError::RunnerError);
+                run.send(err).expect("Could not send run result");
+            }
+        })
+    }
 }
 
-fn spawn_run_thread<R>(mut runner: R,
-                       recv: Receiver<Signal>,
-                       setup: mpsc::Sender<Result<(), ProcessError<R::Error>>>,
-                       run: mpsc::Sender<Result<(), ProcessError<R::Error>>>) -> thread::JoinHandle<()>
-where R: Runner + Send + 'static {
-    thread::spawn(move || {
-        let res = runner.setup().map_err(ProcessError::RunnerError);
-        let is_err = res.is_err();
-        setup.send(res).expect("Could not send setup result");
 
-        if !is_err {
-            let err = runner.run(recv).map_err(ProcessError::RunnerError);
-            run.send(err).expect("Could not send run result");
-        }
-    })
-}
-
-impl<R: Runner> Process for MaridProcess<R> {
-    type Error = ProcessError<R::Error>;
+impl Process for MaridProcess {
+    type Error = ProcessError<MaridError>;
 
     fn ready(&self) -> Result<(), Self::Error> {
         match self.state.get() {
@@ -142,7 +144,7 @@ impl<R: Runner> Process for MaridProcess<R> {
     }
 }
 
-impl<R: Runner> Drop for MaridProcess<R> {
+impl Drop for MaridProcess {
     fn drop(&mut self) {
         let runner = self.runner.take();
         runner.expect("No runner").
@@ -154,13 +156,13 @@ impl<R: Runner> Drop for MaridProcess<R> {
 mod tests {
     use test_helpers::{TestRunner};
     use super::{MaridProcess, ProcessError};
-    use traits::{Process, Signal};
+    use traits::{Runner, Process, Signal};
     use chan;
 
     #[test]
     fn test_ready_process() {
         let (sn, rc) = chan::sync(0);
-        let runner = TestRunner::new(0, sn);
+        let runner = Box::new(TestRunner::new(0, sn)) as Box<Runner + Send>;
 
         let (signal_sn, signal_rc) = chan::sync(9);
         let process = MaridProcess::new(runner, signal_sn, signal_rc);
@@ -184,7 +186,7 @@ mod tests {
     #[test]
     fn test_wait_and_signal_process() {
         let (sn, rc) = chan::sync(0);
-        let runner = TestRunner::new(0, sn);
+        let runner = Box::new(TestRunner::new(0, sn)) as Box<Runner + Send>;
 
         let (signal_sn, signal_rc) = chan::sync(9);
         let process = MaridProcess::new(runner, signal_sn, signal_rc);
