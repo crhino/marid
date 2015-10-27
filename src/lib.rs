@@ -10,7 +10,7 @@ extern crate crossbeam;
 use std::error::Error;
 
 mod traits;
-pub use traits::*;
+pub use traits::{Signal, Sender, Receiver, Process, Runner};
 
 mod composer;
 pub use composer::Composer;
