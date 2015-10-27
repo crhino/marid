@@ -66,6 +66,11 @@ impl<E: Error> From<E> for ProcessError<E> {
     }
 }
 
+/// Signifying the running state of a unit of work, a MaridProcess will spawn a
+/// new thread in order to not block the current thread.
+///
+/// Upon dropping, an instance of a MaridProcess will join on the running thread,
+/// potentially blocking.
 pub struct MaridProcess {
     setup_chan: mpsc::Receiver<Result<(), ProcessError<MaridError>>>,
     run_chan: mpsc::Receiver<Result<(), ProcessError<MaridError>>>,
@@ -77,6 +82,7 @@ pub struct MaridProcess {
 
 // Be aware, ready/wait
 impl MaridProcess {
+    /// Create a new MaridProcess process.
     pub fn new(runner: Box<Runner + Send>, signaler: Sender<Signal>, recv: Receiver<Signal>) -> MaridProcess {
         let (setup_sn, setup_rc) = mpsc::channel();
         let (run_sn, run_rc) = mpsc::channel();

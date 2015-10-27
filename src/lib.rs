@@ -14,8 +14,7 @@ mod composer;
 pub use composer::Composer;
 
 mod process;
-use process::{MaridProcess};
-pub use process::{ProcessError};
+pub use process::{MaridProcess, ProcessError};
 
 use std::error::Error;
 /// Error type for Marid Runners.
@@ -28,15 +27,14 @@ pub type MaridError = Box<Error + Send>;
 ///
 /// This must be called before any threads are spawned in the process to
 /// ensure appropriate signal handling behavior.
-pub fn initiate<R>(runner: R, signals: Vec<Signal>)
--> Box<Process<Error=ProcessError<MaridError>>>
+pub fn launch<R>(runner: R, signals: Vec<Signal>) -> MaridProcess
 where R: Runner + Send + 'static {
     let (signal_send, signal_recv) = chan::sync(1024);
     for sig in signals {
         chan_signal::notify_on(&signal_send, sig);
     }
 
-    Box::new(MaridProcess::new(Box::new(runner), signal_send, signal_recv))
+    MaridProcess::new(Box::new(runner), signal_send, signal_recv)
 }
 
 // TODO: Make this module more useable and document behavior.
