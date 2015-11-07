@@ -6,6 +6,8 @@ authors = ["crhino <piraino.chris@gmail.com>"]
 description = "An orchestration library for running, waiting on, and stopping threads."
 
 repository = "https://github.com/crhino/marid"
+documentation = "http://crhino.github.io/marid-docs/marid/index.html"
+
 readme = "./README.md"
 license = "BSD-3-Clause"
 keywords = ["concurrency"]
