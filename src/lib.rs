@@ -1,7 +1,16 @@
 #![deny(missing_docs, dead_code)]
 //! Marid
 //!
-//! A process orchestration library
+//! A process orchestration library.
+//!
+//! This library is influenced by [tedsuo's ifrit](https://github.com/tedsuo/ifrit), a similar
+//! library for Golang.
+//!
+//! The foundation of the library is built on the idea of a `Runner` trait, which
+//! encapsulates a singular unit of work, e.g. a thread, which is has a long lifetime, potential
+//! forever. The `Process` is a trait that defines the actual running of one or more `Runner`
+//! objects. Importantly, a `Process` defines the ability to setup, wait for, and signal a
+//! `Runner`.
 #[macro_use]
 extern crate chan;
 extern crate chan_signal;
