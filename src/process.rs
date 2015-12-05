@@ -32,7 +32,7 @@ impl<E: Error> fmt::Display for ProcessError<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ProcessError::RunnerError(ref e) => {
-                write!(fmt, "{}", e.description())
+                write!(fmt, "{}", e)
             },
             ProcessError::ResultAlreadyGiven => {
                 write!(fmt, "Already returned result to caller")
@@ -82,8 +82,9 @@ pub struct MaridProcess {
 
 // Be aware, ready/wait
 impl MaridProcess {
-    /// Create a new MaridProcess process.
-    pub fn new(runner: Box<Runner + Send>, signaler: Sender<Signal>, recv: Receiver<Signal>) -> MaridProcess {
+    /// Starts the specified runner with the given signal receiver, and returns a MaridProcess
+    /// to manage the running unit of work.
+    pub fn start(runner: Box<Runner + Send>, signaler: Sender<Signal>, recv: Receiver<Signal>) -> MaridProcess {
         let (setup_sn, setup_rc) = mpsc::channel();
         let (run_sn, run_rc) = mpsc::channel();
 
@@ -171,7 +172,7 @@ mod tests {
         let runner = Box::new(TestRunner::new(0, sn)) as Box<Runner + Send>;
 
         let (signal_sn, signal_rc) = chan::sync(9);
-        let process = MaridProcess::new(runner, signal_sn, signal_rc);
+        let process = MaridProcess::start(runner, signal_sn, signal_rc);
         let res = process.ready();
         assert!(res.is_ok());
 
@@ -195,7 +196,7 @@ mod tests {
         let runner = Box::new(TestRunner::new(0, sn)) as Box<Runner + Send>;
 
         let (signal_sn, signal_rc) = chan::sync(9);
-        let process = MaridProcess::new(runner, signal_sn, signal_rc);
+        let process = MaridProcess::start(runner, signal_sn, signal_rc);
         process.signal(Signal::INT);
 
         assert!(rc.recv().unwrap()); // rendevous channel goes first

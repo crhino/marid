@@ -9,7 +9,7 @@
 //! The foundation of the library is built on the idea of a `Runner` trait, which
 //! encapsulates a singular unit of work, e.g. a thread, which is has a long lifetime, potential
 //! forever. The `Process` is a trait that defines the actual running of one or more `Runner`
-//! objects. Importantly, a `Process` defines the ability to setup, wait for, and signal a
+//! objects. Importantly, a `Process` defines the ability to wait for, and signal a
 //! `Runner`.
 #[macro_use]
 extern crate chan;
@@ -43,7 +43,7 @@ where R: Runner + Send + 'static {
         chan_signal::notify_on(&signal_send, sig);
     }
 
-    MaridProcess::new(Box::new(runner), signal_send, signal_recv)
+    MaridProcess::start(Box::new(runner), signal_send, signal_recv)
 }
 
 // TODO: Make this module more useable and document behavior.

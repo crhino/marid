@@ -7,6 +7,9 @@ use {MaridError};
 /// defined shutdown Signal, the Runner must exit in a finite period of time.
 pub trait Runner {
     /// The run function is called when a user wants to perform work.
+    ///
+    /// The Box<Self> form is used here in order to allow Process types the ability to run
+    /// different types of Runners at once.
     fn run(self: Box<Self>, signals: Receiver<Signal>) -> Result<(), MaridError>;
 
     /// The setup function is called when a user wants to get ready to work.
@@ -29,7 +32,8 @@ pub trait Process {
     fn wait(&self) -> Result<(), Self::Error>;
     /// This function will signal the running Process with the specified signal.
     ///
-    /// This is a non-blocking function.
+    /// ### Warnings
+    /// This must be a non-blocking function.
     fn signal(&self, signal: Signal);
 }
 
