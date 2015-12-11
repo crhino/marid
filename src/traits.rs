@@ -1,5 +1,6 @@
 pub use chan_signal::Signal;
 pub use chan::{Sender, Receiver};
+use thunk::Thunk;
 use {MaridError};
 
 /// A type implementing the Runner trait has the job of performing some arbitrary
@@ -17,6 +18,16 @@ pub trait Runner {
     /// This function should only complete once the type is ready to be run,
     /// and must complete in a finite period of time.
     fn setup(&mut self) -> Result<(), MaridError>;
+}
+
+impl<'a> Runner for Thunk<'a, Receiver<Signal>, Result<(), MaridError>> {
+    fn run(self: Box<Self>, signals: Receiver<Signal>) -> Result<(), MaridError> {
+        (*self).invoke(signals)
+    }
+
+    fn setup(&mut self) -> Result<(), MaridError> {
+        Ok(())
+    }
 }
 
 /// A Process represents are running unit of work. It can be signaled and waited on.
@@ -39,7 +50,8 @@ pub trait Process {
 
 #[cfg(test)]
 mod tests {
-    use {Signal, Process};
+    use {Signal, Process, Runner};
+    use thunk::Thunk;
     use test_helpers::{TestProcess, TestRunner};
     use chan;
 
@@ -54,6 +66,17 @@ mod tests {
         assert!(thread.wait().is_ok());
 
         assert!(rc.recv().unwrap());
+    }
+
+    #[test]
+    fn test_thunk_runner() {
+        let (_sn, rc) = chan::sync(1);
+        let mut runner = Box::new(Thunk::with_arg(move |_sig| {
+            Ok(())
+        }));
+
+        assert!(runner.setup().is_ok());
+        assert!(runner.run(rc).is_ok());
     }
 
     #[test]

@@ -19,6 +19,8 @@ extern crate crossbeam;
 mod traits;
 pub use traits::{Signal, Sender, Receiver, Process, Runner};
 
+mod thunk;
+
 mod composer;
 pub use composer::Composer;
 
