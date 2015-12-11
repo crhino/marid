@@ -17,7 +17,8 @@ pub struct TestRunner {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-struct TestError;
+/// Error type for testing
+pub struct TestError;
 
 impl fmt::Display for TestError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

@@ -24,7 +24,7 @@ fn test_launch() {
     let (sn2, rc2) = chan::sync(0);
     let runner2 = Box::new(TestRunner::new(2, sn2.clone())) as Box<Runner + Send>;
 
-    let composer = Composer::new(vec!(runner1, runner2));
+    let composer = Composer::new(vec!(runner1, runner2), Signal::INT);
     let signals = vec!(Signal::INT, Signal::ALRM);
 
     let process = launch(composer, signals);
@@ -45,7 +45,7 @@ fn test_launch_error() {
     let (sn2, rc2) = chan::sync(0);
     let runner2 = Box::new(TestRunner::new(2, sn2.clone())) as Box<Runner + Send>;
 
-    let composer = Composer::new(vec!(runner1, runner2));
+    let composer = Composer::new(vec!(runner1, runner2), Signal::INT);
     let signals = vec!(Signal::INT, Signal::HUP);
 
     let process = launch(composer, signals);
@@ -69,7 +69,7 @@ fn test_launch_different_runners() {
     let runner1 = Box::new(TestRunner::new(1, sn1.clone())) as Box<Runner + Send>;
     let runner2 = Box::new(NullRunner) as Box<Runner + Send>;
 
-    let composer = Composer::new(vec!(runner1, runner2));
+    let composer = Composer::new(vec!(runner1, runner2), Signal::INT);
     let signals = vec!(Signal::INT, Signal::HUP);
 
     let process = launch(composer, signals);
