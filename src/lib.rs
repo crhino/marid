@@ -7,7 +7,7 @@
 //! library for Golang.
 //!
 //! The foundation of the library is built on the idea of a `Runner` trait, which
-//! encapsulates a singular unit of work, e.g. a thread, which is has a long lifetime, potential
+//! encapsulates a singular unit of work, e.g. a thread, which is has a long lifetime, potentially
 //! forever. The `Process` is a trait that defines the actual running of one or more `Runner`
 //! objects. Importantly, a `Process` defines the ability to wait for, and signal a
 //! `Runner`.
@@ -21,6 +21,7 @@
 //!     // Do a bunch of work...
 //!     Ok(())
 //! })) as Box<Runner + Send>;
+//!
 //! let mut runner2 = Box::new(FnRunner::new(move |_sig| {
 //!     // Do a bunch of other work...
 //!     Ok(())

@@ -15,7 +15,6 @@ rust:
   - stable
 matrix:
   allow_failures:
-  - rust: stable # Remove once all features needed are stable
   - rust: nightly
 
 # load travis-cargo

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
+#![allow(dead_code, missing_docs)]
 
 pub struct Thunk<'a, A=(),R=()> {
     invoke: Box<Invoke<A,R>+Send + 'a>,
