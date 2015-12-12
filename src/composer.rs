@@ -5,6 +5,8 @@ use chan;
 use std::thread;
 use std::sync::{Arc, Mutex};
 
+/// The Composer type.
+///
 /// The Composer will start each runner inside of its own thread when the run() function
 /// is called. The current behavior is an ordered setup/run, but in the future a parallel
 /// startup mode will be offered.
@@ -20,7 +22,9 @@ enum State {
 }
 
 impl<R> Composer<R> {
-    /// Creates a new Composer. The error_signal is the Signal that the Composer will send to
+    /// Creates a new Composer.
+    ///
+    /// The error_signal is the Signal that the Composer will send to
     /// runners when another runner in the group has finished with an error.
     pub fn new(runners: Vec<R>, error_signal: Signal) -> Composer<R> {
         Composer{

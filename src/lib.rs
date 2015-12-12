@@ -11,6 +11,36 @@
 //! forever. The `Process` is a trait that defines the actual running of one or more `Runner`
 //! objects. Importantly, a `Process` defines the ability to wait for, and signal a
 //! `Runner`.
+//!
+//! # Examples
+//!
+//! ```
+//! use marid::{launch, Runner, Process, Composer, FnRunner, Signal};
+//!
+//! let mut runner1 = Box::new(FnRunner::new(move |_sig| {
+//!     // Do a bunch of work...
+//!     Ok(())
+//! })) as Box<Runner + Send>;
+//! let mut runner2 = Box::new(FnRunner::new(move |_sig| {
+//!     // Do a bunch of other work...
+//!     Ok(())
+//! })) as Box<Runner + Send>;
+//!
+//! let composer = Composer::new(vec!(runner1, runner2), Signal::INT);
+//! let signals = vec!(Signal::INT, Signal::ALRM);
+//!
+//! // Start all Runners in separate threads.
+//! let process = launch(composer, signals);
+//!
+//! // Wait until all Runners have been setup.
+//! assert!(process.ready().is_ok());
+//!
+//! // Send a shutdown signal to all Runners.
+//! process.signal(Signal::INT);
+//!
+//! // Wait until all Runners have finished.
+//! assert!(process.wait().is_ok());
+//! ```
 #[macro_use]
 extern crate chan;
 extern crate chan_signal;
@@ -33,10 +63,9 @@ use std::error::Error;
 /// Error type for Marid Runners.
 pub type MaridError = Box<Error + Send>;
 
-/// This function will start the specified runner as well as listen on the specified
-/// signals.
+/// Launch the specified runner as well as listen on the specified signals.
 ///
-/// # Warnings
+/// # Safety
 ///
 /// This must be called before any threads are spawned in the process to
 /// ensure appropriate signal handling behavior.

@@ -82,8 +82,7 @@ pub struct MaridProcess {
 
 // Be aware, ready/wait
 impl MaridProcess {
-    /// Starts the specified runner with the given signal receiver, and returns a MaridProcess
-    /// to manage the running unit of work.
+    /// Starts the specified runner with the given signal receiver.
     pub fn start(runner: Box<Runner + Send>, signaler: Sender<Signal>, recv: Receiver<Signal>) -> MaridProcess {
         let (setup_sn, setup_rc) = mpsc::channel();
         let (run_sn, run_rc) = mpsc::channel();

@@ -6,13 +6,13 @@ use {MaridError};
 /// work while waiting for a signal indication shutdown. Upon receiving that
 /// defined shutdown Signal, the Runner must exit in a finite period of time.
 pub trait Runner {
-    /// The run function is called when a user wants to perform work.
+    /// Performs work for an indefinite amount of time.
     ///
     /// The Box<Self> form is used here in order to allow Process types the ability to run
     /// different types of Runners at once.
     fn run(self: Box<Self>, signals: Receiver<Signal>) -> Result<(), MaridError>;
 
-    /// The setup function is called when a user wants to get ready to work.
+    /// Used to do any setup work necessary for the Runner.
     ///
     /// This function should only complete once the type is ready to be run,
     /// and must complete in a finite period of time.
