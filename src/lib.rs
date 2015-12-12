@@ -20,6 +20,8 @@ mod traits;
 pub use traits::{Signal, Sender, Receiver, Process, Runner};
 
 mod thunk;
+mod fn_runner;
+pub use fn_runner::FnRunner;
 
 mod composer;
 pub use composer::Composer;
