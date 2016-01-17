@@ -13,6 +13,6 @@ license = "BSD-3-Clause"
 keywords = ["concurrency"]
 
 [dependencies]
-chan-signal = ">=0.1.4"
-chan = ">=0.1.14"
-crossbeam = ">=0.1.5"
+chan-signal = "^0.1.4"
+chan = "^0.1.14"
+crossbeam = "^0.1.5"
